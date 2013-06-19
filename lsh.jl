@@ -4,6 +4,8 @@
 using Distributions
 using Distance
 
+require("dumbsearch.jl")
+
 type LSHashtable
     functions::Array{Function}
     tables::Array{Dict{Uint,Set{Int}}}
@@ -64,7 +66,7 @@ end
 # M is the matrix
 # LSH is the precomputed hashtable
 # metric is what distance metric to use
-function LS_nearest_neighbors(M::Matrix,
+function ls_nearest_neighbors(M::Matrix,
                               LSH::LSHashtable,
                               metric::Metric,
                               q::Int,
@@ -72,9 +74,9 @@ function LS_nearest_neighbors(M::Matrix,
                               d::Number)
     # dimensionality of the data
     dims = length(M[:,1])
-
+    
     # compute the hash of the query point with each function 
-    query_hashes = [func(M[:,i]) for (i,func) in enumerate(LSH.functions)]
+    query_hashes = [func(M[:,q]) for (i,func) in enumerate(LSH.functions)]
     
     # iterate over each hash table and collect neighbors
     neighbors = Set{Int}()
@@ -83,10 +85,8 @@ function LS_nearest_neighbors(M::Matrix,
             for neighbor in table[query_hashes[i]]
                 this_dist = pairwise(metric,reshape(M[:,neighbor],(dims,1)),
                                             reshape(M[:,q],(dims,1)))
-                @show this_dist
-                if this_dist[1] < d
-                    neighbors = union(neighbors,Set(neighbor))
-                    @show neighbors
+                if this_dist[1] < d && neighbor != q
+                    add!(neighbors,neighbor)
                     if length(neighbors) == n
                         return neighbors
                     end
@@ -99,10 +99,29 @@ function LS_nearest_neighbors(M::Matrix,
     return neighbors
 end
 
-A = 10*rand(2,10)
-D = pairwise(Euclidean(),A)
+# test for correctness
+test_cor(i,dist) = nn_search(D,i,dist) == 
+sort([i for i in ls_nearest_neighbors(A,lsh,Euclidean(),i,Inf,dist)])
 
-nn_search(D,2,3)
+# test speed
 
-lsh = ls_hashtables(A,2,4.0,7)
-lsfound = LS_nearest_neighbors(A,lsh,Euclidean(),3,Inf,2)
+function test_nn(A)
+    D = pairwise(Euclidean(),A)
+    for i in 0:100
+        nn_search(D,4,5)
+    end
+end
+
+function test_lsh(A)
+    lsh = ls_hashtables(A,50,4.0,13)
+    for i in 0:100
+        ls_nearest_neighbors(A,lsh,Euclidean(),12,Inf,6)
+    end
+end
+
+A = rand(30,10000)
+@elapsed test_nn(A)
+@elapsed test_lsh(A)
+
+# TODO: - implement parameter optimization for a given data set
+#       - change API?

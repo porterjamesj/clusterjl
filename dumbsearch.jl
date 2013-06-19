@@ -8,8 +8,8 @@ using Distance
 # for which D is the distance matrix
 # that are within r of the point at index i
 function nn_search(D::Matrix,
-                   r::Number,
-                   i::Int)
+                   i::Int,
+                   r::Number)
     neighbors = Int[]
     for j in [1:length(D[:,i])]
         if 0 < D[i,j] < r
