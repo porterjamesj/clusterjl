@@ -27,7 +27,7 @@ end
 # k is number of dot products to use in constructing each hash function.
 function ls_hashtables(M::Matrix,
                        L::Int,
-                       w::Float64,
+                       w::Number,
                        k::Int)
     # facts about the Matrix
     d = length(M[:,1]) # dimensionality
@@ -55,21 +55,54 @@ function ls_hashtables(M::Matrix,
 end
 
 
-
-
-
-# Find all points within dist of a point in a matrix
-# given the matrix and a precompued LSHastable
-# d is the distance in which we want to look
-# n is the number of neighbors after which to stop looking
-# i is the index of the point we want to know about
+# Find points within a given distances of a point in a matrix
+# given the matrix and a precompued LSHastable.
+# d is the distance away from the query point we want to look
+# pass Inf if you want the n nearest neighbors regardless of distance
+# n is the number of neighbors desired
+# q is the index of the query point
 # M is the matrix
 # LSH is the precomputed hashtable
 # metric is what distance metric to use
-function LS_nearest_neighbors(M::Matrix,LSH::LSHashtable,metric::Metric)
-    # compute hashes with each function for the 
-    point_hashes = [func(M[:,i]) for func in LSH.functions]
+function LS_nearest_neighbors(M::Matrix,
+                              LSH::LSHashtable,
+                              metric::Metric,
+                              q::Int,
+                              n::Number,
+                              d::Number)
+    # dimensionality of the data
+    dims = length(M[:,1])
 
-    # iterate over the correct bucket in each hash table and look for neighbors
+    # compute the hash of the query point with each function 
+    query_hashes = [func(M[:,i]) for (i,func) in enumerate(LSH.functions)]
     
+    # iterate over each hash table and collect neighbors
+    neighbors = Set{Int}()
+    for (i,table) in enumerate(LSH.tables)
+        if haskey(table,query_hashes[i])
+            for neighbor in table[query_hashes[i]]
+                this_dist = pairwise(metric,reshape(M[:,neighbor],(dims,1)),
+                                            reshape(M[:,q],(dims,1)))
+                @show this_dist
+                if this_dist[1] < d
+                    neighbors = union(neighbors,Set(neighbor))
+                    @show neighbors
+                    if length(neighbors) == n
+                        return neighbors
+                    end
+                end
+            end
+        end
+    end
+    # if we get here, we didn't find enough neighbors,
+    # so just return the ones we did
+    return neighbors
 end
+
+A = 10*rand(2,10)
+D = pairwise(Euclidean(),A)
+
+nn_search(D,2,3)
+
+lsh = ls_hashtables(A,2,4.0,7)
+lsfound = LS_nearest_neighbors(A,lsh,Euclidean(),3,Inf,2)
