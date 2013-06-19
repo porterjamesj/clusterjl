@@ -26,7 +26,7 @@ function dbscan(X::Matrix,
     # Note that this marks each sample as a member of its own
     # epsilon neighborhood.
     # This smells bad, I bet there's a better way
-    neighborhoods = [filter(x -> D[x,i] < eps,[1:n]) for i=[1:n]]
+    neighborhoods = [filter(x -> D[x,i] < eps,[1:n]) for i in 1:n]
     # Initially, all samples are noise (labeled -1)
     labels = fill(-1,n)
     # Keep track of each core sample
