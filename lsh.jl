@@ -54,6 +54,10 @@ function ls_hashtables(M::Matrix,
     return LSHashtable(hashfuncs,tables)
 end
 
+
+
+
+
 # Find all points within dist of a point in a matrix
 # given the matrix and a precompued LSHastable
 # d is the distance in which we want to look
