@@ -2,60 +2,11 @@ using Devectorize
 using Distance
 # using MLBase
 
-require("dumbsearch.jl")
-
-# This follows wikipedia's pseudocode
-
-function expand_cluster(p::Int,
-                        neighbors::Array{Int})
-    cluster = []
-    push!(cluster, p)
-    incluster(p) = true
-    for p_ in neighbors
-        if unvisited(p_)
-            unvisited(p_) = false 
-            neighbors_ = nn_search(distmat, eps, p_)
-            if length(neighbors_) >= min_pnts
-                append!(neighbors,neighbors_)
-            end
-        end
-        if !incluster(p_)
-            push!(cluster,p_)
-        end
-    end
-    return cluster
-end
-
-function db_scan(data::Array,
-                 eps::Number,
-                 min_pnts::Int,
-                 metric::Metric)
-    unvisited = trues(size(data)[1]) # keep track of which points are still unvisited
-    noise = falses(size(data)[1]) # which points are noise
-    incluster = copy(noise) # which points have already been added to a cluster
-    clusters = [] # array of clusters, each of which is itself a 1-d array
-    
-    distmat = pairwise(metric,data)
-    
-    #iterate until all points have been visited
-    while any(unvisited)
-        curi = findfirst(unvisited)
-        unvisited[curi] = false
-        neighbors = nn_search(distmat, eps, curi)
-        if length(neighbors) < min_pnts
-            curcluster = []
-            push!(clusters,expand_cluster(curi,neighbors))
-        end
-    end
-    return clusters
-end
-
-
 # this follows what scikit does
 # The array is treated as a feature array,
-# unless metric is given as None, in which case it is assumed
+# unless metric is given as "precomputed", in which case it is assumed
 # that X is a precomputed distance matrix 
-function dbscan2(X::Matrix,
+function dbscan(X::Matrix,
                  eps::Number,
                  min_pnts::Int,
                  metric::Union(Metric,String))
@@ -107,6 +58,8 @@ function dbscan2(X::Matrix,
                 labels[noise] = label_num
                 for neighbor in noise
                     # check if this neighbor is also a core point
+                    # core points are those with a sufficiently dense
+                    # epsilon neighborhood
                     if length(neighborhoods[neighbor]) >= min_pnts
                         # it is a core point, add it to the new candidates
                         push!(new_candidates,neighbor)
